@@ -25,7 +25,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     /// add objects
     tocabi_ = world_->addArticulatedSystem(resourceDir_+"/tocabi/dyros_tocabi.urdf");
     tocabi_->setName("tocabi");
-    tocabi_->setControlMode(raisim::ControlMode::PD_PLUS_FEEDFORWARD_TORQUE);
+    tocabi_->setControlMode(raisim::ControlMode::FORCE_AND_TORQUE);
     world_->addGround();
 
     /// get robot data
@@ -39,7 +39,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     pTarget_.setZero(gcDim_); vTarget_.setZero(gvDim_); pTarget12_.setZero(nJoints_);
 
     /// this is nominal configuration of tocabi
-    gc_init_ << 0, 0, 1.0, 1.0, 0.0, 0.0, 0.0,
+    gc_init_ << 0, 0, 0.92983, 1.0, 0.0, 0.0, 0.0,
                0.0, 0.0, -0.24, 0.6, -0.36, 0.0,
                0.0, 0.0, -0.24, 0.6, -0.36, 0.0,
                0.0, 0.0, 0.0,
@@ -48,22 +48,22 @@ class ENVIRONMENT : public RaisimGymEnv {
                -0.3, -0.3, -1.5, 1.27, 1.0, 0.0, 1.0, 0.0;
 
     /// set pd gains
-    Eigen::VectorXd jointPgain(gvDim_), jointDgain(gvDim_);
+    jointPgain.resize(gvDim_); jointDgain.resize(gvDim_);
     jointPgain.setZero(); 
+    jointDgain.setZero(); 
+    tocabi_->setPdGains(jointPgain, jointDgain);
     jointPgain.tail(nJoints_) << 2000.0, 5000.0, 4000.0, 3700.0, 3200.0, 3200.0,
                   2000.0, 5000.0, 4000.0, 3700.0, 3200.0, 3200.0,
                   6000.0, 10000.0, 10000.0,
                   400.0, 1000.0, 400.0, 400.0, 400.0, 400.0, 100.0, 100.0,
                   100.0, 100.0,
                   400.0, 1000.0, 400.0, 400.0, 400.0, 400.0, 100.0, 100.0;
-    jointDgain.setZero(); 
     jointDgain.tail(nJoints_) << 15.0, 50.0, 20.0, 25.0, 24.0, 24.0,
                   15.0, 50.0, 20.0, 25.0, 24.0, 24.0,
                   200.0, 100.0, 100.0,
                   10.0, 28.0, 10.0, 10.0, 10.0, 10.0, 3.0, 3.0,
                   2.0, 2.0,
                   10.0, 28.0, 10.0, 10.0, 10.0, 10.0, 3.0, 3.0;
-    tocabi_->setPdGains(jointPgain, jointDgain);
     tocabi_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
 
     /// MUST BE DONE FOR ALL ENVIRONMENTS
@@ -81,34 +81,34 @@ class ENVIRONMENT : public RaisimGymEnv {
     rewards_.initializeFromConfigurationFile (cfg["reward"]);
 
     /// indices of links that should not make contact with ground
-    footIndices_.insert(tocabi_->getBodyIdx("Pelvis_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_HipRoll_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_HipCenter_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Thigh_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Knee_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_HipRoll_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_HipCenter_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Thigh_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Knee_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("Waist1_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("Waist2_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("Upperbody_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder1_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder2_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder3_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Armlink_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Elbow_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Forearm_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Wrist1_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("R_Wrist2_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder1_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder2_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder3_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Armlink_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Elbow_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Forearm_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Wrist1_Link"));
-    footIndices_.insert(tocabi_->getBodyIdx("L_Wrist2_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("Pelvis_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_HipRoll_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_HipCenter_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Thigh_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Knee_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_HipRoll_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_HipCenter_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Thigh_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Knee_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("Waist1_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("Waist2_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("Upperbody_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder1_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder2_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder3_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Armlink_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Elbow_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Forearm_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Wrist1_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("R_Wrist2_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder1_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder2_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder3_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Armlink_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Elbow_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Forearm_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Wrist1_Link"));
+    // footIndices_.insert(tocabi_->getBodyIdx("L_Wrist2_Link"));
 
     /// visualize if it is the first environment
     if (visualizable_) {
@@ -122,6 +122,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     std::filesystem::path cwd = std::filesystem::current_path() / "motions/processed_data_tocabi_walk.txt";
     readTextFile(cwd.string(), mocapData_);
     target_data_qpos_.resize(nJoints_);
+    target_data_qpos_ = gc_init_.tail(nJoints_);
   }
 
   void init() final { }
@@ -149,10 +150,24 @@ class ENVIRONMENT : public RaisimGymEnv {
     for (int i=0; i<nJoints_; i++){
       target_data_qpos_(i) = cubic(local_time_plus_init, mocapData_(mocap_data_idx,0), mocapData_(next_idx,0), mocapData_(mocap_data_idx,1+i), mocapData_(next_idx,1+i), 0.0, 0.0);
     }
+    target_data_qpos_(33) = 0.0;
+    target_data_qpos_(23) = 0.0;
     // pTarget_.tail(nJoints_) = target_data_qpos_;
     // tocabi_->setPdTarget(pTarget_, vTarget_);
 
+    Eigen::VectorXd tau;
+    tau.resize(gvDim_); tau.setZero();
+
+    // Eigen::VectorXd gc_init_tmp; gc_init_tmp.resize(gcDim_); gc_init_tmp.setZero();
+    // gc_init_tmp = gc_init_;
+    // gc_init_tmp.tail(nJoints_) = target_data_qpos_;
+    // tocabi_->setState(gc_init_tmp, gv_init_);
+
     for(int i=0; i< int(control_dt_ / simulation_dt_ + 1e-10); i++){
+    tocabi_->getState(gc_, gv_);
+    tau.tail(nJoints_) = jointPgain.tail(nJoints_)*(target_data_qpos_-gc_.tail(nJoints_)) - jointDgain.tail(nJoints_)*gv_.tail(nJoints_);
+    // tau(38) = 0.0; tau(28) = 0.0;
+    tocabi_->setGeneralizedForce(tau);
       if(server_) server_->lockVisualizationServerMutex();
       world_->integrate();
       if(server_) server_->unlockVisualizationServerMutex();
@@ -194,9 +209,9 @@ class ENVIRONMENT : public RaisimGymEnv {
     terminalReward = float(terminalRewardCoeff_);
 
     /// if the contact body is not feet
-    for(auto& contact: tocabi_->getContacts())
-      if(footIndices_.find(contact.getlocalBodyIndex()) == footIndices_.end())
-        return true;
+    // for(auto& contact: tocabi_->getContacts())
+    //   if(footIndices_.find(contact.getlocalBodyIndex()) == footIndices_.end())
+    //     return true;
 
     terminalReward = 0.f;
     return false;
@@ -214,6 +229,8 @@ class ENVIRONMENT : public RaisimGymEnv {
   Eigen::VectorXd actionMean_, actionStd_, obDouble_;
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
   std::set<size_t> footIndices_;
+
+  Eigen::VectorXd jointPgain, jointDgain;
 
   double time_ = 0.0;
 
