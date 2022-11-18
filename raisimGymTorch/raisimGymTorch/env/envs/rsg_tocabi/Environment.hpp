@@ -49,8 +49,7 @@ class ENVIRONMENT : public RaisimGymEnv {
 
     /// set pd gains
     jointPgain.resize(gvDim_); jointDgain.resize(gvDim_);
-    jointPgain.setZero(); 
-    jointDgain.setZero(); 
+    jointPgain.setZero(); jointDgain.setZero(); 
     tocabi_->setPdGains(jointPgain, jointDgain);
     jointPgain.tail(nJoints_) << 2000.0, 5000.0, 4000.0, 3700.0, 3200.0, 3200.0,
                   2000.0, 5000.0, 4000.0, 3700.0, 3200.0, 3200.0,
@@ -58,6 +57,7 @@ class ENVIRONMENT : public RaisimGymEnv {
                   400.0, 1000.0, 400.0, 400.0, 400.0, 400.0, 100.0, 100.0,
                   100.0, 100.0,
                   400.0, 1000.0, 400.0, 400.0, 400.0, 400.0, 100.0, 100.0;
+                  
     jointDgain.tail(nJoints_) << 15.0, 50.0, 20.0, 25.0, 24.0, 24.0,
                   15.0, 50.0, 20.0, 25.0, 24.0, 24.0,
                   200.0, 100.0, 100.0,
@@ -150,8 +150,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     for (int i=0; i<nJoints_; i++){
       target_data_qpos_(i) = cubic(local_time_plus_init, mocapData_(mocap_data_idx,0), mocapData_(next_idx,0), mocapData_(mocap_data_idx,1+i), mocapData_(next_idx,1+i), 0.0, 0.0);
     }
-    target_data_qpos_(33) = 0.0;
-    target_data_qpos_(23) = 0.0;
+    
     // pTarget_.tail(nJoints_) = target_data_qpos_;
     // tocabi_->setPdTarget(pTarget_, vTarget_);
 
@@ -165,9 +164,9 @@ class ENVIRONMENT : public RaisimGymEnv {
 
     for(int i=0; i< int(control_dt_ / simulation_dt_ + 1e-10); i++){
     tocabi_->getState(gc_, gv_);
-    tau.tail(nJoints_) = jointPgain.tail(nJoints_)*(target_data_qpos_-gc_.tail(nJoints_)) - jointDgain.tail(nJoints_)*gv_.tail(nJoints_);
-    // tau(38) = 0.0; tau(28) = 0.0;
+    tau.tail(nJoints_) = jointPgain.tail(nJoints_).cwiseProduct(target_data_qpos_-gc_.tail(nJoints_)) - jointDgain.tail(nJoints_).cwiseProduct(gv_.tail(nJoints_));
     tocabi_->setGeneralizedForce(tau);
+
       if(server_) server_->lockVisualizationServerMutex();
       world_->integrate();
       if(server_) server_->unlockVisualizationServerMutex();
