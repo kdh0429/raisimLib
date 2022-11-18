@@ -139,7 +139,6 @@ class ENVIRONMENT : public RaisimGymEnv {
     // pTarget12_ += actionMean_;
     // pTarget_.tail(nJoints_) = pTarget12_;
 
-    // tocabi_->setPdTarget(pTarget_, vTarget_);
 
     // Mocap Debugging
     double local_time = std::fmod(time_, mocap_cycle_period_);
@@ -154,14 +153,15 @@ class ENVIRONMENT : public RaisimGymEnv {
     // pTarget_.tail(nJoints_) = target_data_qpos_;
     // tocabi_->setPdTarget(pTarget_, vTarget_);
 
-    Eigen::VectorXd tau;
-    tau.resize(gvDim_); tau.setZero();
 
     // Eigen::VectorXd gc_init_tmp; gc_init_tmp.resize(gcDim_); gc_init_tmp.setZero();
     // gc_init_tmp = gc_init_;
     // gc_init_tmp.tail(nJoints_) = target_data_qpos_;
     // tocabi_->setState(gc_init_tmp, gv_init_);
 
+    Eigen::VectorXd tau;
+    tau.resize(gvDim_); tau.setZero();
+    
     for(int i=0; i< int(control_dt_ / simulation_dt_ + 1e-10); i++){
     tocabi_->getState(gc_, gv_);
     tau.tail(nJoints_) = jointPgain.tail(nJoints_).cwiseProduct(target_data_qpos_-gc_.tail(nJoints_)) - jointDgain.tail(nJoints_).cwiseProduct(gv_.tail(nJoints_));

@@ -92,3 +92,4 @@ create_executable(anymals src/maps/anymals.cpp)
 create_executable(hill1 src/maps/hill1.cpp)
 create_executable(kinova src/maps/kinova.cpp)
 
+create_executable(tocabi src/server/tocabi.cpp)
