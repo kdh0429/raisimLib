@@ -20,7 +20,7 @@ class PPO:
                  lam=0.95,
                  value_loss_coef=0.5,
                  entropy_coef=0.0,
-                 learning_rate=5e-4,
+                 learning_rate=5e-5,
                  max_grad_norm=0.5,
                  learning_rate_schedule='adaptive',
                  desired_kl=0.01,
@@ -166,3 +166,14 @@ class PPO:
             mean_surrogate_loss /= num_updates
 
         return mean_value_loss, mean_surrogate_loss, locals()
+
+    def update_learning_rate(self, learning_rate: float) -> None:
+        """
+        Update the learning rate for a given optimizer.
+        Useful when doing linear schedule.
+
+        :param optimizer:
+        :param learning_rate:
+        """
+        for param_group in self.optimizer.param_groups:
+            param_group["lr"] = learning_rate

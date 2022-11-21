@@ -69,7 +69,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     // Action Scaling
     raisim::VecDyn torque_limit = tocabi_->getActuationUpperLimits();
     action_high_.resize(nAction_);
-    action_high_ << torque_limit.e();//, cfg_["control_dt"].template As<double>();
+    action_high_ << torque_limit.e().segment(6,12);//, cfg_["control_dt"].template As<double>();
 
     tau_lower_.resize(12); tau_lower_.setZero();
 
@@ -94,7 +94,7 @@ class ENVIRONMENT : public RaisimGymEnv {
 
     // Mocap
     mocapData_.resize(n_mocap_row, n_mocap_col);
-    std::filesystem::path cwd = std::filesystem::current_path() / "motions/processed_data_tocabi_walk.txt";
+    std::filesystem::path cwd = std::filesystem::current_path() / "motions/processed_data_tocabi_squat.txt";
     readTextFile(cwd.string(), mocapData_);
     target_data_qpos_.resize(nJoints_);
     target_data_qpos_ = gc_init_.tail(nJoints_);
@@ -123,7 +123,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     // pTarget_.tail(nJoints_) = target_data_qpos_;
     // tocabi_->setPdTarget(pTarget_, vTarget_);
 
-    // For Motion Debugging
+    // Set State (For Motion Debugging)
     // Eigen::VectorXd gc_init_tmp; gc_init_tmp.resize(gcDim_); gc_init_tmp.setZero();
     // gc_init_tmp = gc_init_;
     // gc_init_tmp.tail(nJoints_) = target_data_qpos_;
@@ -219,12 +219,12 @@ class ENVIRONMENT : public RaisimGymEnv {
 
   double time_ = 0.0;
 
-  const static int n_mocap_row = 3600;
+  const static int n_mocap_row = 321;
   const static int n_mocap_col = 34;
   Eigen::MatrixXd mocapData_;
   int mocap_data_idx_ = 0;
   int init_mocap_data_idx_ = 0;
-  double mocap_cycle_dt_ = 0.0005;
+  double mocap_cycle_dt_ = 0.025;
   double mocap_cycle_period_ = (n_mocap_row-1)*mocap_cycle_dt_;
   Eigen::VectorXd target_data_qpos_;
 

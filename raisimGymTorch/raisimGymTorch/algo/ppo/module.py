@@ -85,7 +85,7 @@ class MLP(nn.Module):
 
         modules.append(nn.Linear(shape[-1], output_size))
         self.architecture = nn.Sequential(*modules)
-        scale.append(np.sqrt(2))
+        scale.append(0.01)
 
         self.init_weights(self.architecture, scale)
         self.input_shape = [input_size]

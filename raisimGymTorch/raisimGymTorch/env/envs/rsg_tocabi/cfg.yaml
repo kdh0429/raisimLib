@@ -4,12 +4,12 @@ record_video: yes
 environment:
   render: True
 # just testing commenting
-  num_envs: 1
-  eval_every_n: 10
+  num_envs: 100
+  eval_every_n: 50
   num_threads: 30
   simulation_dt: 0.0005
-  control_dt: 0.0005
-  max_time: 4.0
+  control_dt: 0.004
+  max_time: 8.0
   reward:
     orientation:
       coeff: 0.3
@@ -17,6 +17,11 @@ environment:
       coeff: 0.35
     qvel:
       coeff: 0.01
+
+training:
+  n_total_update: 1000
+  initial_lr: 5e-5
+  final_lr: 1e-6
 
 architecture:
   policy_net: [256, 256]

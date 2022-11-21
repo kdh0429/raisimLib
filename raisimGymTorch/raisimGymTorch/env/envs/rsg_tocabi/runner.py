@@ -47,6 +47,9 @@ num_threads = cfg['environment']['num_threads']
 # Training
 n_steps = math.floor(cfg['environment']['max_time'] / cfg['environment']['control_dt'])
 total_steps = n_steps * env.num_envs
+n_total_update = cfg['training']['n_total_update']
+initial_lr = cfg['training']['initial_lr']
+final_lr = cfg['training']['final_lr']
 
 avg_rewards = []
 
@@ -62,13 +65,18 @@ critic = ppo_module.Critic(ppo_module.MLP(cfg['architecture']['value_net'], nn.L
 
 saver = ConfigurationSaver(log_dir=home_path + "/raisimGymTorch/data/"+task_name,
                            save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"])
-# tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
+tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
+
+def linear_schedule(progress_remaining, initial_lr=5e-5, final_lr=1e-6):
+    return progress_remaining*initial_lr + (1-progress_remaining)*final_lr
+
 
 ppo = PPO.PPO(actor=actor,
               critic=critic,
               num_envs=cfg['environment']['num_envs'],
               num_transitions_per_env=n_steps,
               num_learning_epochs=4,
+              learning_rate=5e-5,
               gamma=0.99,
               lam=0.95,
               num_mini_batches=4,
@@ -80,7 +88,7 @@ ppo = PPO.PPO(actor=actor,
 if mode == 'retrain':
     load_param(weight_path, env, actor, critic, ppo.optimizer, saver.data_dir)
 
-for update in range(1000000):
+for update in range(n_total_update):
     start = time.time()
     env.reset()
     reward_ll_sum = 0
@@ -100,7 +108,7 @@ for update in range(1000000):
         loaded_graph.load_state_dict(torch.load(saver.data_dir+"/full_"+str(update)+'.pt')['actor_architecture_state_dict'])
 
         env.turn_on_visualization()
-        # env.start_video_recording(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "policy_"+str(update)+'.mp4')
+        env.start_video_recording(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "policy_"+str(update)+'.mp4')
 
         for step in range(n_steps*2):
             with torch.no_grad():
@@ -114,7 +122,7 @@ for update in range(1000000):
                     time.sleep(wait_time)
 
         env.stop_video_recording()
-        # env.turn_off_visualization()
+        env.turn_off_visualization()
 
         env.reset()
         env.save_scaling(saver.data_dir, str(update))
@@ -131,6 +139,7 @@ for update in range(1000000):
     # take st step to get value obs
     obs = env.observe()
     ppo.update(actor_obs=obs, value_obs=obs, log_this_iteration=update % 10 == 0, update=update)
+    ppo.update_learning_rate(linear_schedule(1.0-update/n_total_update, initial_lr, final_lr))
     average_ll_performance = reward_ll_sum / total_steps
     average_dones = done_sum / total_steps
     avg_rewards.append(average_ll_performance)
