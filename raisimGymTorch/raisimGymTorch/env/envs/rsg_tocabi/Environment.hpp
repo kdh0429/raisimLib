@@ -66,49 +66,24 @@ class ENVIRONMENT : public RaisimGymEnv {
                   10.0, 28.0, 10.0, 10.0, 10.0, 10.0, 3.0, 3.0;
     tocabi_->setGeneralizedForce(Eigen::VectorXd::Zero(gvDim_));
 
+    // Action Scaling
+    raisim::VecDyn torque_limit = tocabi_->getActuationUpperLimits();
+    action_high_.resize(nAction_);
+    action_high_ << torque_limit.e();//, cfg_["control_dt"].template As<double>();
+
+    tau_lower_.resize(12); tau_lower_.setZero();
+
     /// MUST BE DONE FOR ALL ENVIRONMENTS
     obDim_ = 34;
-    actionDim_ = nJoints_; actionMean_.setZero(actionDim_); actionStd_.setZero(actionDim_);
+    actionDim_ = nAction_;
     obDouble_.setZero(obDim_);
-
-    /// action scaling
-    actionMean_ = gc_init_.tail(nJoints_);
-    double action_std;
-    READ_YAML(double, action_std, cfg_["action_std"]) /// example of reading params from the config
-    actionStd_.setConstant(action_std);
 
     /// Reward coefficients
     rewards_.initializeFromConfigurationFile (cfg["reward"]);
 
     /// indices of links that should not make contact with ground
-    // footIndices_.insert(tocabi_->getBodyIdx("Pelvis_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_HipRoll_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_HipCenter_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Thigh_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Knee_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_HipRoll_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_HipCenter_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Thigh_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Knee_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("Waist1_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("Waist2_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("Upperbody_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder1_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder2_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Shoulder3_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Armlink_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Elbow_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Forearm_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Wrist1_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("R_Wrist2_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder1_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder2_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Shoulder3_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Armlink_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Elbow_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Forearm_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Wrist1_Link"));
-    // footIndices_.insert(tocabi_->getBodyIdx("L_Wrist2_Link"));
+    footIndices_.insert(tocabi_->getBodyIdx("R_AnkleRoll_Link"));
+    footIndices_.insert(tocabi_->getBodyIdx("L_AnkleRoll_Link"));
 
     /// visualize if it is the first environment
     if (visualizable_) {
@@ -130,17 +105,11 @@ class ENVIRONMENT : public RaisimGymEnv {
   void reset() final {
     tocabi_->setState(gc_init_, gv_init_);
     updateObservation();
+    time_ = 0.0;
   }
 
   float step(const Eigen::Ref<EigenVec>& action) final {
-    /// action scaling
-    // pTarget12_ = action.cast<double>();
-    // pTarget12_ = pTarget12_.cwiseProduct(actionStd_);
-    // pTarget12_ += actionMean_;
-    // pTarget_.tail(nJoints_) = pTarget12_;
-
-
-    // Mocap Debugging
+    // Mocap
     double local_time = std::fmod(time_, mocap_cycle_period_);
     double local_time_plus_init = fmod(local_time + init_mocap_data_idx_*mocap_cycle_dt_, mocap_cycle_period_);
     int mocap_data_idx = (init_mocap_data_idx_ + int(local_time / mocap_cycle_dt_)) % (n_mocap_row-1);
@@ -150,10 +119,11 @@ class ENVIRONMENT : public RaisimGymEnv {
       target_data_qpos_(i) = cubic(local_time_plus_init, mocapData_(mocap_data_idx,0), mocapData_(next_idx,0), mocapData_(mocap_data_idx,1+i), mocapData_(next_idx,1+i), 0.0, 0.0);
     }
     
+    // For PD Control
     // pTarget_.tail(nJoints_) = target_data_qpos_;
     // tocabi_->setPdTarget(pTarget_, vTarget_);
 
-
+    // For Motion Debugging
     // Eigen::VectorXd gc_init_tmp; gc_init_tmp.resize(gcDim_); gc_init_tmp.setZero();
     // gc_init_tmp = gc_init_;
     // gc_init_tmp.tail(nJoints_) = target_data_qpos_;
@@ -161,24 +131,38 @@ class ENVIRONMENT : public RaisimGymEnv {
 
     Eigen::VectorXd tau;
     tau.resize(gvDim_); tau.setZero();
-    
+
+    tau_lower_ = action.head(12).cast<double>().cwiseProduct(action_high_.head(12));
+
     for(int i=0; i< int(control_dt_ / simulation_dt_ + 1e-10); i++){
-    tocabi_->getState(gc_, gv_);
-    tau.tail(nJoints_) = jointPgain.tail(nJoints_).cwiseProduct(target_data_qpos_-gc_.tail(nJoints_)) - jointDgain.tail(nJoints_).cwiseProduct(gv_.tail(nJoints_));
-    tocabi_->setGeneralizedForce(tau);
+      tocabi_->getState(gc_, gv_);
+      tau.tail(nJoints_) = jointPgain.tail(nJoints_).cwiseProduct(target_data_qpos_-gc_.tail(nJoints_)) - jointDgain.tail(nJoints_).cwiseProduct(gv_.tail(nJoints_));
+      tau.segment(6, 12) = tau_lower_;
+      tocabi_->setGeneralizedForce(tau);
 
       if(server_) server_->lockVisualizationServerMutex();
       world_->integrate();
       if(server_) server_->unlockVisualizationServerMutex();
     }
     time_ += simulation_dt_;
+    // time_ += minmax_cut(action(12), -1, 1) * action_high_(12);
 
     // Obervation
     updateObservation();
 
     // Reward
-    // rewards_.record("torque", tocabi_->getGeneralizedForce().squaredNorm());
-    // rewards_.record("forwardVel", std::min(4.0, bodyLinearVel_[0]));
+    Eigen::Vector4d qaut_current, quat_desired; 
+    quat_desired << 1,0,0,0; 
+    qaut_current << gc_.segment(3,4);
+    double angle_diff = get_quat_angle_diff(qaut_current, quat_desired);
+
+    double joint_mimic_error = (target_data_qpos_ - gc_.segment(7, nJoints_)).norm();
+
+    double joint_vel_reg = (gv_.segment(6, nJoints_)).norm();
+
+    rewards_.record("orientation", exp(-13.2*abs(angle_diff)));
+    rewards_.record("qpos", exp(-2.0*pow(joint_mimic_error, 2)));
+    rewards_.record("qvel", exp(-0.01*pow(joint_vel_reg, 2)));
 
     return rewards_.sum();
   }
@@ -207,10 +191,12 @@ class ENVIRONMENT : public RaisimGymEnv {
   bool isTerminalState(float& terminalReward) final {
     terminalReward = float(terminalRewardCoeff_);
 
-    /// if the contact body is not feet
-    // for(auto& contact: tocabi_->getContacts())
-    //   if(footIndices_.find(contact.getlocalBodyIndex()) == footIndices_.end())
-    //     return true;
+    // if the contact body is not feet
+    for(auto& contact: tocabi_->getContacts())
+    {
+      if(footIndices_.find(contact.getlocalBodyIndex()) == footIndices_.end())
+        return true;
+    }
 
     terminalReward = 0.f;
     return false;
@@ -225,7 +211,7 @@ class ENVIRONMENT : public RaisimGymEnv {
   raisim::ArticulatedSystem* tocabi_;
   Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, pTarget12_, vTarget_;
   double terminalRewardCoeff_ = -10.;
-  Eigen::VectorXd actionMean_, actionStd_, obDouble_;
+  Eigen::VectorXd obDouble_;
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
   std::set<size_t> footIndices_;
 
@@ -241,6 +227,10 @@ class ENVIRONMENT : public RaisimGymEnv {
   double mocap_cycle_dt_ = 0.0005;
   double mocap_cycle_period_ = (n_mocap_row-1)*mocap_cycle_dt_;
   Eigen::VectorXd target_data_qpos_;
+
+  int nAction_ = 12;
+  Eigen::VectorXd action_high_;
+  Eigen::VectorXd tau_lower_;
 
   /// these variables are not in use. They are placed to show you how to create a random number sampler.
   std::normal_distribution<double> normDist_;

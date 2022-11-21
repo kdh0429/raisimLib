@@ -7,6 +7,7 @@
 
 #include <fstream> 
 #include <filesystem>
+
 // Util
 double cubic(double time,    ///< Current time
             double time_0,  ///< Start time
@@ -46,6 +47,21 @@ double cubic(double time,    ///< Current time
 
   return x_t;
 }
+
+double minmax_cut(double val, double min_, double max_)
+{
+  if (val < min_)
+    return min_;
+  else if (val > max_)
+    return max_;
+  else
+    return val;
+}
+
+double get_quat_angle_diff(Eigen::Vector4d &q, Eigen::Vector4d &p) {
+  return 2*acos(p(0) * q(0) - p(1) * -q(1) - p(2) * -q(2) - p(3) * -q(3));
+}
+
 
 void readTextFile(std::string file_path, Eigen::MatrixXd &output_matrix)
 {

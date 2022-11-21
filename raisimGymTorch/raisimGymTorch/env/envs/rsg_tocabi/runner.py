@@ -53,7 +53,7 @@ avg_rewards = []
 actor = ppo_module.Actor(ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim),
                          ppo_module.MultivariateGaussianDiagonalCovariance(act_dim,
                                                                            env.num_envs,
-                                                                           1.0,
+                                                                           0.1,
                                                                            NormalSampler(act_dim),
                                                                            cfg['seed']),
                          device)
@@ -69,7 +69,7 @@ ppo = PPO.PPO(actor=actor,
               num_envs=cfg['environment']['num_envs'],
               num_transitions_per_env=n_steps,
               num_learning_epochs=4,
-              gamma=0.996,
+              gamma=0.99,
               lam=0.95,
               num_mini_batches=4,
               device=device,
@@ -136,7 +136,7 @@ for update in range(1000000):
     avg_rewards.append(average_ll_performance)
 
     actor.update()
-    actor.distribution.enforce_minimum_std((torch.ones(33)*0.2).to(device))
+    actor.distribution.enforce_minimum_std((torch.ones(12)*0.05).to(device))
 
     # curriculum update. Implement it in Environment.hpp
     env.curriculum_callback()
