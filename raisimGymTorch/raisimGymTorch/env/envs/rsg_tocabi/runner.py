@@ -51,12 +51,16 @@ n_total_update = cfg['training']['n_total_update']
 initial_lr = cfg['training']['initial_lr']
 final_lr = cfg['training']['final_lr']
 
+init_std = cfg['training']['initial_std']
+final_std = cfg['training']['final_std']
+
 avg_rewards = []
 
 actor = ppo_module.Actor(ppo_module.MLP(cfg['architecture']['policy_net'], nn.LeakyReLU, ob_dim, act_dim),
                          ppo_module.MultivariateGaussianDiagonalCovariance(act_dim,
                                                                            env.num_envs,
-                                                                           0.1,
+                                                                           init_std,
+                                                                           final_std,
                                                                            NormalSampler(act_dim),
                                                                            cfg['seed']),
                          device)
@@ -65,7 +69,7 @@ critic = ppo_module.Critic(ppo_module.MLP(cfg['architecture']['value_net'], nn.L
 
 saver = ConfigurationSaver(log_dir=home_path + "/raisimGymTorch/data/"+task_name,
                            save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"])
-tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
+# tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
 
 def linear_schedule(progress_remaining, initial_lr=5e-5, final_lr=1e-6):
     return progress_remaining*initial_lr + (1-progress_remaining)*final_lr
@@ -144,8 +148,9 @@ for update in range(n_total_update):
     average_dones = done_sum / total_steps
     avg_rewards.append(average_ll_performance)
 
-    actor.update()
-    actor.distribution.enforce_minimum_std((torch.ones(12)*0.05).to(device))
+    actor.distribution.update_std(1.0-update/n_total_update, device)
+    # actor.update()
+    # actor.distribution.enforce_minimum_std((torch.ones(12)*0.05).to(device))
 
     # curriculum update. Implement it in Environment.hpp
     env.curriculum_callback()

@@ -74,7 +74,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     tau_lower_.resize(12); tau_lower_.setZero();
 
     /// MUST BE DONE FOR ALL ENVIRONMENTS
-    obDim_ = 34;
+    obDim_ = 36;
     actionDim_ = nAction_;
     obDouble_.setZero(obDim_);
 
@@ -144,7 +144,7 @@ class ENVIRONMENT : public RaisimGymEnv {
       world_->integrate();
       if(server_) server_->unlockVisualizationServerMutex();
     }
-    time_ += simulation_dt_;
+    time_ += control_dt_;
     // time_ += minmax_cut(action(12), -1, 1) * action_high_(12);
 
     // Obervation
@@ -176,11 +176,16 @@ class ENVIRONMENT : public RaisimGymEnv {
     bodyLinearVel_ = rot.e().transpose() * gv_.segment(0, 3);
     bodyAngularVel_ = rot.e().transpose() * gv_.segment(3, 3);
 
+    double phase = fmod(init_mocap_data_idx_ + fmod(time_, mocap_cycle_period_)/mocap_cycle_dt_, n_mocap_row-1) / (n_mocap_row-1);
+    double sin_phase = sin(2*M_PI*phase);
+    double cos_phase = cos(2*M_PI*phase); 
+
     obDouble_ << gc_[2], /// body height
         rot.e().row(2).transpose(), /// body orientation
         gc_.segment(7,12), /// joint angles
         bodyLinearVel_, bodyAngularVel_, /// body linear&angular velocity
-        gv_.segment(6,12); /// joint velocity
+        gv_.segment(6,12), /// joint velocity
+        sin_phase, cos_phase;
   }
 
   void observe(Eigen::Ref<EigenVec> ob) final {
@@ -210,7 +215,7 @@ class ENVIRONMENT : public RaisimGymEnv {
   bool visualizable_ = false;
   raisim::ArticulatedSystem* tocabi_;
   Eigen::VectorXd gc_init_, gv_init_, gc_, gv_, pTarget_, pTarget12_, vTarget_;
-  double terminalRewardCoeff_ = -10.;
+  double terminalRewardCoeff_ = 0.0;
   Eigen::VectorXd obDouble_;
   Eigen::Vector3d bodyLinearVel_, bodyAngularVel_;
   std::set<size_t> footIndices_;

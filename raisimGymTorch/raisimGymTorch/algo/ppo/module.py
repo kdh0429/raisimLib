@@ -98,10 +98,12 @@ class MLP(nn.Module):
 
 
 class MultivariateGaussianDiagonalCovariance(nn.Module):
-    def __init__(self, dim, size, init_std, fast_sampler, seed=0):
+    def __init__(self, dim, size, init_std, final_std, fast_sampler, seed=0):
         super(MultivariateGaussianDiagonalCovariance, self).__init__()
         self.dim = dim
-        self.std = nn.Parameter(init_std * torch.ones(dim))
+        self.init_std = init_std
+        self.final_std = final_std
+        self.std = nn.Parameter(init_std * torch.ones(dim), requires_grad=False)
         self.distribution = None
         self.fast_sampler = fast_sampler
         self.fast_sampler.seed(seed)
@@ -111,6 +113,10 @@ class MultivariateGaussianDiagonalCovariance(nn.Module):
 
     def update(self):
         self.std_np = self.std.detach().cpu().numpy()
+
+    def update_std(self, progress_remaining, device):
+        self.std = nn.Parameter((progress_remaining*self.init_std + (1-progress_remaining)*self.final_std) * torch.ones(self.dim, device=device), requires_grad=False) 
+        self.update()
 
     def sample(self, logits):
         self.fast_sampler.sample(logits, self.std_np, self.samples, self.logprob)

@@ -22,6 +22,8 @@ training:
   n_total_update: 1000
   initial_lr: 5e-5
   final_lr: 1e-6
+  initial_std: 0.1
+  final_std: 0.05
 
 architecture:
   policy_net: [256, 256]
