@@ -45,9 +45,11 @@ act_dim = env.num_acts
 num_threads = cfg['environment']['num_threads']
 
 # Training
-n_steps = math.floor(cfg['environment']['max_time'] / cfg['environment']['control_dt'])
+n_episode_divide = 4
+n_steps = math.floor(cfg['environment']['max_time'] / cfg['environment']['control_dt'] / n_episode_divide)
 total_steps = n_steps * env.num_envs
 n_total_update = cfg['training']['n_total_update']
+
 initial_lr = cfg['training']['initial_lr']
 final_lr = cfg['training']['final_lr']
 
@@ -94,7 +96,7 @@ if mode == 'retrain':
 
 for update in range(n_total_update):
     start = time.time()
-    env.reset()
+    # env.reset()
     reward_ll_sum = 0
     done_sum = 0
     average_dones = 0.
@@ -114,7 +116,7 @@ for update in range(n_total_update):
         env.turn_on_visualization()
         env.start_video_recording(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + "policy_"+str(update)+'.mp4')
 
-        for step in range(n_steps*2):
+        for step in range(n_steps*n_episode_divide*2):
             with torch.no_grad():
                 frame_start = time.time()
                 obs = env.observe(False)

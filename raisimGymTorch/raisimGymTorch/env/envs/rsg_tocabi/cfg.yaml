@@ -4,7 +4,7 @@ record_video: yes
 environment:
   render: True
 # just testing commenting
-  num_envs: 100
+  num_envs: 200
   eval_every_n: 50
   num_threads: 30
   simulation_dt: 0.0005
@@ -19,7 +19,7 @@ environment:
       coeff: 0.01
 
 training:
-  n_total_update: 1000
+  n_total_update: 4000
   initial_lr: 5e-5
   final_lr: 1e-6
   initial_std: 0.1

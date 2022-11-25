@@ -98,6 +98,12 @@ class ENVIRONMENT : public RaisimGymEnv {
     readTextFile(cwd.string(), mocapData_);
     target_data_qpos_.resize(nJoints_);
     target_data_qpos_ = gc_init_.tail(nJoints_);
+
+    // Max Episode
+    double max_time, control_dt;
+    READ_YAML(double, max_time, cfg_["max_time"]);
+    READ_YAML(double, control_dt, cfg_["control_dt"]);
+    max_episode_steps = int(max_time / control_dt);
   }
 
   void init() final { }
@@ -106,6 +112,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     tocabi_->setState(gc_init_, gv_init_);
     updateObservation();
     time_ = 0.0;
+    elapsed_steps_ = 0;
   }
 
   float step(const Eigen::Ref<EigenVec>& action) final {
@@ -146,6 +153,7 @@ class ENVIRONMENT : public RaisimGymEnv {
     }
     time_ += control_dt_;
     // time_ += minmax_cut(action(12), -1, 1) * action_high_(12);
+    elapsed_steps_ += 1;
 
     // Obervation
     updateObservation();
@@ -203,6 +211,13 @@ class ENVIRONMENT : public RaisimGymEnv {
         return true;
     }
 
+    // Max Episode Length Termination
+    if (elapsed_steps_ > max_episode_steps)
+    {
+      terminalReward = 1.0f;
+      return true;
+    }
+
     terminalReward = 0.f;
     return false;
   }
@@ -223,6 +238,8 @@ class ENVIRONMENT : public RaisimGymEnv {
   Eigen::VectorXd jointPgain, jointDgain;
 
   double time_ = 0.0;
+  int elapsed_steps_ = 0;
+  int max_episode_steps = 2000;
 
   const static int n_mocap_row = 321;
   const static int n_mocap_col = 34;
